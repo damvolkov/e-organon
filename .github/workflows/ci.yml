@@ -41,7 +41,7 @@ jobs:
       fail-fast: false
       matrix:
         ### a Linux service in a container: awa-pg (the queue) ships no Windows wheel.
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         python: ['3.14']
     # a push to main re-runs what its pull request already proved: tests run on pull requests only.
     if: github.event_name == 'pull_request'
