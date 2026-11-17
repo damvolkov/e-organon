@@ -523,5 +523,25 @@
     "required": [
       "template"
     ]
+  },
+  {
+    "name": "audio_transcribe",
+    "title": "Transcribe a recording",
+    "description": "An audio or video file by `path`, whole, into a timestamped speaker-aware transcript: `language` (two-letter hint, empty hears it), `hotwords` (spellings the engine would guess: names, terms) and `srt` for subtitles. The segments come back with the answer; the Markdown, JSON (and SRT) land in the outbox as `path`, `json_path`, `srt_path`. Up to 90 min in one pass. Long jobs: ask with organon_submit and read with organon_job.",
+    "access": "user",
+    "annotations": {
+      "destructive_hint": false,
+      "open_world_hint": false,
+      "read_only_hint": false
+    },
+    "arguments": [
+      "hotwords",
+      "language",
+      "path",
+      "srt"
+    ],
+    "required": [
+      "path"
+    ]
   }
 ]

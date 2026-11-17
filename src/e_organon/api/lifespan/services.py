@@ -21,6 +21,7 @@ from e_organon.ports.documents import DocumentPort
 from e_organon.ports.markdown import MarkdownPort
 from e_organon.ports.pages import PagesPort
 from e_organon.processors.doc import DocProcessor
+from e_organon.services.audio.transcribe import TranscribeAudioService
 from e_organon.services.doc.compose import ComposeDocService
 from e_organon.services.doc.convert import ConvertDocService
 from e_organon.services.doc.fill import FillDocService
@@ -102,6 +103,14 @@ async def lifespan(app: Litestar) -> AsyncGenerator[None]:
     image = system.services.image
     image.cutout = CutoutImageService(found.cutout, files, artifacts, max_pixels=st.ORGANON_MAX_PIXELS)
     doc.signature = SignatureDocService(image.cutout, doc.stamp)
+    ### `audio/transcribe` exists only with its sidecar configured (MOSS_URL).
+    match found.moss:
+        case None:
+            pass
+        case moss:
+            system.services.audio.transcribe = TranscribeAudioService(
+                moss, found.media, files, artifacts, limit=st.ORGANON_MAX_AUDIO
+            )
     ### `doc/ocr` exists only with its engine open (OCR_ENABLED).
     match found.ocr:
         case None:

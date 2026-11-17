@@ -3,6 +3,7 @@
 UPPERCASE typed fields, the field name the environment variable itself, read once at the composition root and handed
 down as plain arguments."""
 
+from datetime import timedelta
 from pathlib import Path
 
 from pydantic import PositiveInt
@@ -34,6 +35,10 @@ class ServiceSettings(BaseSettings):
     ### times in a few hundred kilobytes, and render, merge and split walk it page by page.
     ORGANON_MAX_PAGES: PositiveInt = 5_000
 
+    ### MAX_AUDIO — the longest recording `audio/transcribe` accepts, read from the header before anything is decoded:
+    ### the engine answers a single pass of this much; longer lives are someone else's problem (cut it, then ask).
+    ORGANON_MAX_AUDIO: timedelta = timedelta(minutes=90)
+
     ##### IMAGES #####
 
     ### MAX_PIXELS — the most pixels an image tool decodes (width x height, read from the header first): decoding
@@ -45,6 +50,8 @@ class ServiceSettings(BaseSettings):
     ### SLOTS — how many jobs of a section run at once, fleet-wide on the durable queue; one per section that has jobs.
     ORGANON_SLOTS_DOC: PositiveInt = 2
     ORGANON_SLOTS_IMAGE: PositiveInt = 2
+    ### one at a time: the speech sidecar is one model on one GPU, and an hour of audio is not a small thing to feed it.
+    ORGANON_SLOTS_AUDIO: PositiveInt = 1
 
     ##### TEKTON #####
 

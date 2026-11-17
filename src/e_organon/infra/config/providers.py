@@ -162,6 +162,14 @@ class ProviderSettings(BaseSettings):
     ### a request's body must fit the socket's buffers, or the client's TCP_USER_TIMEOUT (30 s) aborts the connection.
     GLINER_BATCH: PositiveInt = 16
 
+    ### MOSS — the `audio/transcribe` sidecar (sglang-omni or vLLM, OpenAI audio endpoint): unset MOSS_URL, no tool at all.
+    ### the deadline carries one streaming request — the wav up and the whole transcript back — for the longest passable recording.
+    MOSS_URL: HttpUrl | None = None
+    MOSS_MODEL: str = "OpenMOSS-Team/MOSS-Transcribe-Diarize"
+    MOSS_DEADLINE: timedelta = timedelta(minutes=20)
+    ### one diarized hour outgrows the endpoint's default ceiling; 64 k tokens answer three of them.
+    MOSS_MAX_NEW_TOKENS: Annotated[int, Field(ge=1024)] = 65_536
+
     ### REDIS
     REDIS_URL: Secret[RedisDsn] = Secret(RedisDsn("redis://localhost:6379/0"))
     REDIS_POOL: PositiveInt = 10
@@ -214,6 +222,10 @@ class ProviderSettings(BaseSettings):
 
     ### TYPST — the `doc/compose` sandbox: a template is a caller's code, each compile its own process, stopped after this long.
     COMPOSE_TIMEOUT: timedelta = timedelta(seconds=5)
+
+    ### FFMPEG — the media adapter: ffprobe reads a header within the timeout; a decode that goes quiet past the stall is stuck.
+    FFMPEG_TIMEOUT: timedelta = timedelta(seconds=30)
+    FFMPEG_STALL: timedelta = timedelta(minutes=2)
 
     ### RAPIDOCR — the `doc/ocr` tool: off, no tool and no models; on, its models are fetched into `<ORGANON_DATA>/doc/models`.
     OCR_ENABLED: bool = False

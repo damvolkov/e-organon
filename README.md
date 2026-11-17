@@ -19,6 +19,7 @@ answer; its MCP twin (`<section>_<word>`, same handler) answers in batch. Files 
 | `doc/merge` | PDFs joined in order, forms kept | pikepdf |
 | `doc/split` | a PDF cut into page ranges | pikepdf |
 | `doc/render` | PDF pages as PNG at a DPI | pypdfium2 (PDFium) |
+| `audio/transcribe` | a whole audio or video → timestamped, speaker-labelled transcript (Markdown · JSON · SRT kept in the outbox) | ffmpeg (extract), MOSS-Transcribe-Diarize on sglang-omni (when `MOSS_URL`) |
 | `tekton/start` · `status` · `tasks` · `cancel` | a prompt run in Claude Code under a profile, in the background; watched (`status` streams a step per tick while it waits), listed, cancelled | Claude Agent SDK, the bridge engine |
 | `tekton/find` · `read` · `update` · `catalog` | Claude Code's recorded sessions found, read, renamed and tagged; a project's commands, skills and agents | Claude Agent SDK |
 | `tekton/peers` · `send` | the sessions open in a terminal, and a message to one | `claude mcp serve` |
