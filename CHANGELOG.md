@@ -18,6 +18,8 @@
   boundary in the header, the three speaker dialects, the echo, the refusals), the service over both fakes; 797 pass,
   gates clean.
 
+- CI runs on Linux only: macOS and Windows dropped (Damien, 17/11 — the stack runs on Linux).
+
 ### Security
 - **`doc/compose` is a sandbox** (TODO_doc follow-up): each compile runs in its own process with a dead proxy, no `HOME` and a 2 GiB
   address-space ceiling, stopped after `COMPOSE_TIMEOUT` (default 5 s) from outside — a thread cannot be killed — and its PDF held to
