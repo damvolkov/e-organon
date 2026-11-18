@@ -18,10 +18,11 @@ strip. A strip already read at the same place, looking alike (a mean grey differ
 again: video noise is no new name. Only a picture with exactly one marked tile says who spoke at that instant. What the
 OCR read is cut to the person (the organisation after them goes), its variants folded onto the most frequent spelling
 they resemble (`difflib`, ratio `FOLD`), and what reads as no name dropped. Each label then counts the names seen while
-it spoke: the most seen names it when seen at least `votes` times and in at least `share` of its sightings. A label the
-engine gave two voices splits its votes and is named by none; its segments are then named one by one, after stitching,
-where the video showed one name at least `alone` times while the segment lasted and no other — a name earned by one
-segment never spreads to its label. A label spoken only under a shared screen — no grid, no tile — keeps no name: it
+it spoke: the most seen names it when seen at least `votes` times and in at least `share` of its sightings. The engine
+sometimes gives two voices one label: then the label's name, or its lack of one, is wrong for some of its segments. So
+after stitching each segment is held to its own witness: where the video showed one name at least `alone` times while
+the segment lasted, and no other, that name is the segment's — over its label's, and a name a segment earns never
+spreads to its label. A label spoken only under a shared screen — no grid, no tile — keeps no name: it
 is not guessed."""
 
 import bisect
@@ -290,10 +291,10 @@ class SpeakersProcessor:
         )
 
     def each(self, segments: Iterable[Segment], seen: Sequence[Seen]) -> tuple[Segment, ...]:
-        """Every segment still unnamed, named on its own where the video showed one name, and only it, at least `alone`
-        times while it lasted; named segments are left as they are."""
+        """Every segment held to its own witness: where the video showed one name, and only it, at least `alone` times
+        while it lasted, that name is the segment's, whatever its label says; elsewhere the segment keeps what it had."""
         instants, names = self._name_sightings(seen)
         return tuple(
-            each if each.name else msgspec.structs.replace(each, name=self._each_own(each, instants, names))
+            msgspec.structs.replace(each, name=own) if (own := self._each_own(each, instants, names)) else each
             for each in segments
         )

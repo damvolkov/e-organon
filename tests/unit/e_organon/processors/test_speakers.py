@@ -338,6 +338,17 @@ async def test_speakers_each_names_an_unnamed_segment_by_the_one_name_shown_whil
     assert out.name == expected
 
 
-async def test_speakers_each_leaves_a_named_segment_as_it_is(speakers: SpeakersProcessor) -> None:
-    (out,) = speakers.each([_called(10, 18, "S07", "Ana")], _sighted("Diego", 12, 14, 16))
-    assert out.name == "Ana"
+@pytest.mark.parametrize(
+    ("seen", "expected"),
+    [
+        (_sighted("Diego", 12, 14, 16), "Diego"),
+        (_sighted("Diego", 12), "Ana"),
+        ([*_sighted("Diego", 12, 14), *_sighted("Ana", 16)], "Ana"),
+    ],
+    ids=["its-own-witness-wins", "one-sighting-is-no-witness", "a-split-witness-keeps-the-label"],
+)
+async def test_speakers_each_holds_a_named_segment_to_its_own_witness(
+    speakers: SpeakersProcessor, seen: list[Seen], expected: str
+) -> None:
+    (out,) = speakers.each([_called(10, 18, "S07", "Ana")], seen)
+    assert out.name == expected

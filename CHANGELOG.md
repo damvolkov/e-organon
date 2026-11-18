@@ -24,6 +24,12 @@ times while it lasted. A shared screen shows no grid (its
   98.9 % and 92.8 % of their speech named, one label per person, nothing between segments longer than 20 s. What stays
   unnamed was spoken under a shared screen (minutes 20–29 of the second meeting show no tile at all) — the labels
   stay (`.ergon/scratch/speakers/`). Tests: 883, coverage 100 %, every hook clean.
+- **A segment's own witness over its label's name** (TODO_speakers): the engine sometimes gives two voices one label, and
+  the label's name then lies for the other voice's segments. After stitching, a segment where the video showed one name,
+  and only it, `ORGANON_STAGE_ALONE` times while it lasted takes that name, whatever its label says (never spread to the
+  label). On the second Allianz meeting it corrects «soy Pascual…» (was under Álvaro's label) and a turn of Luis Ángel
+  Polanco (was under Carmen's); on the first it changes nothing — none of its 126 segments with a clear witness
+  contradicted its name. Released in v0.10.0 were the windows and the naming; this is the patch over them.
 - CI installs ffmpeg for the test job: the media adapter's tests decode real containers, and every run of `feat/audio`
   failed without it (`FileNotFoundError: 'ffmpeg'`).
 - **`audio/transcribe` (TODO_transcribe)**: a whole audio or video — up to `ORGANON_MAX_AUDIO` (90 min, refused on the
