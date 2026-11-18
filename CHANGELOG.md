@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+- **The image says its real version**: the build context has no `.git`, so uv-dynamic-versioning stamped 0.0.0 and
+  the OpenAPI document said so. The release passes the tag's version as `VERSION`, the Dockerfile hands it to
+  `UV_DYNAMIC_VERSIONING_BYPASS`. And the semver image tag was never pushed (`:0.8.0` not found): under
+  `workflow_dispatch` there is no tag ref, so `docker/metadata-action` now gets the tag as its value. Local check:
+  `--build-arg VERSION=9.9.9` → `importlib.metadata.version("e-organon")` is 9.9.9.
 ### TODO_doc — finished (2026-11-06)
 - `organon/submit`, form-line-free `image/cutout`, `doc/ocr`, `doc/sign`, `doc/compose` (sandboxed typst) released as
   v0.9.0 and deployed with `OCR_ENABLED` and `SIGN_P12`. Live: `doc/ocr` reads a scan in 1.2 s; `doc/compose` renders
