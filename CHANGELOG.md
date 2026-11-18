@@ -21,6 +21,8 @@
   61:54) the earlier code on 20-minute windows covered both to their last words (3660/3685 s, 3681/3714 s); the naming,
   voted per window and stitched by name, named 97.2 % of the important meeting's speech with one label per person
   (`.ergon/scratch/speakers/`). Tests: 883, coverage 100 %, every hook clean.
+- CI installs ffmpeg for the test job: the media adapter's tests decode real containers, and every run of `feat/audio`
+  failed without it (`FileNotFoundError: 'ffmpeg'`).
 - **`audio/transcribe` (TODO_transcribe)**: a whole audio or video — up to `ORGANON_MAX_AUDIO` (90 min, refused on the
   header probe, nothing decoded) — into a timestamped, speaker-labelled transcript: Markdown, JSON and optional SRT kept
   in the outbox, the segments riding in the answer. `TranscribePort` met by `MossDriver` (MOSS-Transcribe-Diarize 0.9B on
