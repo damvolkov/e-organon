@@ -8,6 +8,52 @@
   the 2-page invoice; Hermes submits a job with `organon_submit` and follows it to `completed`; `doc/sign` with the
   owner's FNMT certificate gives a signature pyHanko validates intact, valid and trusted (`bottom_line` true), and a
   one-byte change breaks it. Known: the image reports version 0.0.0 (the build does not see the git tags).
+### Added
+- **`audio/transcribe` whole on any length, its speakers named from the video (TODO_speakers)**. One pass of a
+  61-minute meeting stopped at 37:13 and answered success: the sidecar holds 65 536 tokens for audio and transcript
+  together, and the hour's audio took 44 777 of them (measured 18/11: the decode stopped at 65 230). Now a recording
+  longer than `ORGANON_AUDIO_WINDOW` (30 min) is heard in windows overlapping by `ORGANON_AUDIO_OVERLAP` (2 min), one
+  request each (`MediaPort.extract` takes `start`/`length`); a window whose answer stops more than the overlap before
+  its end is asked again for the rest, up to `ORGANON_AUDIO_RETRIES` (2). Speakers are named deterministically, no model
+  asked: `StagePort.rings` (new; `TeamsStageAdapter`, OpenCV) finds the Teams tile ringed as speaking in pictures
+  sampled every `ORGANON_STAGE_EVERY` (2 s, `MediaPort.frames`), the OCR reads the name strip under it (once per place
+  while it looks alike), and `SpeakersProcessor` names each window's labels by vote (at least `ORGANON_STAGE_VOTES` 3
+  sightings and `ORGANON_STAGE_SHARE` 0.6 of them), then stitches the windows: by name first, then by the overlap they
+  both heard, never across two different names, the overlap cut at its middle; a segment its label left unnamed (the
+engine gave two voices one label) is named on its own when one name, and only it, was shown `ORGANON_STAGE_ALONE` (2)
+times while it lasted. A shared screen shows no grid (its
+  foot-left label is the presenter's for the whole share, measured): a voice heard only there keeps its label. The
+  answer gains `windows`, `covered`, `speakers` (label → name) and each segment's `name`; Markdown and SRT lead with the
+  name; `TranscribeIn.names` turns it off. Without an OCR (`OCR_ENABLED` off) the labels stay. Also: a stalled ffmpeg
+  child is killed, no longer waited for (anyio's process waits on exit). Evidence: on the two Allianz meetings (61:24,
+  61:54), on 30-minute windows, both covered to their last words (3661/3685 s, 3681/3714 s) in three requests each;
+  98.9 % and 92.8 % of their speech named, one label per person, nothing between segments longer than 20 s. What stays
+  unnamed was spoken under a shared screen (minutes 20–29 of the second meeting show no tile at all) — the labels
+  stay (`.ergon/scratch/speakers/`). Tests: 883, coverage 100 %, every hook clean.
+- **A segment's own witness over its label's name** (TODO_speakers): the engine sometimes gives two voices one label, and
+  the label's name then lies for the other voice's segments. After stitching, a segment where the video showed one name,
+  and only it, `ORGANON_STAGE_ALONE` times while it lasted takes that name, whatever its label says (never spread to the
+  label). On the second Allianz meeting it corrects «soy Pascual…» (was under Álvaro's label) and a turn of Luis Ángel
+  Polanco (was under Carmen's); on the first it changes nothing — none of its 126 segments with a clear witness
+  contradicted its name. Released in v0.10.0 were the windows and the naming; this is the patch over them.
+- CI installs ffmpeg for the test job: the media adapter's tests decode real containers, and every run of `feat/audio`
+  failed without it (`FileNotFoundError: 'ffmpeg'`).
+- **`audio/transcribe` (TODO_transcribe)**: a whole audio or video — up to `ORGANON_MAX_AUDIO` (90 min, refused on the
+  header probe, nothing decoded) — into a timestamped, speaker-labelled transcript: Markdown, JSON and optional SRT kept
+  in the outbox, the segments riding in the answer. `TranscribePort` met by `MossDriver` (MOSS-Transcribe-Diarize 0.9B on
+  sglang-omni, `MOSS_URL` unset means no route, no MCP tool, as `doc/ocr`); `MediaPort` by `FfmpegAdapter` (ffprobe json,
+  the wav streamed child→upload, never whole in memory). The wire is the server's verified contract: `verbose_json` with
+  the speaker as the `[Sxx] ` prefix of `segments[].text` (a `speaker`/`speaker_id` field is still read), the `language`
+  field a request echo (`auto` read as no declaration), hotwords as the card's recipe — the trained instruction with the
+  `热词提示：` hint appended, since `prompt` replaces it. One job at a time (`ORGANON_SLOTS_AUDIO=1`): one GPU, one honest
+  limit. The sidecar is on-demand and the swap window is the whole card (vllm, embed and reranker out, moss at
+  `--mem-fraction-static 0.62`): MOSS is single-pass — the encoder runs on the whole recording and the KV holds it
+  (`docs/decisions.md`, bench numbers in `.ergon/reports/plans/transcribe.md`: RTFx 17–24 on real meetings, one hour in
+  three minutes). Tests: adapter on real ffmpeg containers, driver on a faked `HTTPPort` (multipart bytes with the
+  boundary in the header, the three speaker dialects, the echo, the refusals), the service over both fakes; 797 pass,
+  gates clean.
+
+- CI runs on Linux only: macOS and Windows dropped (Damien, 17/11 — the stack runs on Linux).
 
 ### Security
 - **`doc/compose` is a sandbox** (TODO_doc follow-up): each compile runs in its own process with a dead proxy, no `HOME` and a 2 GiB

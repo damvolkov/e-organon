@@ -24,7 +24,7 @@ from e_organon.api import docs
 from e_organon.api.lifespan import db, engines, jobs, mcp, providers, sealed, services
 from e_organon.api.lifespan.infra import lifespan as infra_lifespan
 from e_organon.api.middlewares import MIDDLEWARES, cors_config
-from e_organon.api.router import auth, doc, health, image, organon, tekton
+from e_organon.api.router import audio, auth, doc, health, image, organon, tekton
 from e_organon.api.router import jobs as jobs_router
 from e_organon.api.security import BEARER_SCHEME, SecuritySchemeName
 from e_organon.api.state import AppState
@@ -84,6 +84,7 @@ def create_app() -> Litestar:
         *([tekton.ROUTES] if bridge else []),
         *([doc.OCR] if st.OCR_ENABLED else []),
         *([doc.SIGN] if st.SIGN_P12 is not None else []),
+        *([audio.ROUTES] if st.MOSS_URL is not None else []),
     )
     _ = [app.register(Router(path="/", route_handlers=list(routes), guards=[guard])) for routes in guarded]
     app.register(
@@ -99,7 +100,11 @@ def create_app() -> Litestar:
     app.register(
         Router(
             path="/",
-            route_handlers=list(tools.routes(bridge=bridge, ocr=st.OCR_ENABLED, sign=st.SIGN_P12 is not None)),
+            route_handlers=list(
+                tools.routes(
+                    bridge=bridge, ocr=st.OCR_ENABLED, sign=st.SIGN_P12 is not None, speech=st.MOSS_URL is not None
+                )
+            ),
             guards=[internal, guard],
         )
     )

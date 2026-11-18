@@ -20,6 +20,7 @@ from e_organon.ports.http import HTTPPort
 from e_organon.ports.provider import Provider
 from e_organon.ports.store import StorePort
 from e_organon.providers.drivers.documents.docling import DoclingDriver
+from e_organon.providers.drivers.speech.moss import MossDriver
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -106,6 +107,18 @@ def test_providers_docling_reads_the_docling_settings(monkeypatch: pytest.Monkey
     monkeypatch.setattr(providers_lifespan, "st", st.model_copy(update={"DOCLING_URL": url}))
     driver = providers_lifespan.docling_driver(cast("HTTPPort", object()))
     assert isinstance(driver, DoclingDriver)
+
+
+def test_providers_moss_reads_the_moss_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """MOSS_URL set: the driver is built on it, over the shared HTTP client."""
+    url = HttpUrl("http://moss.test:8000/v1")
+    monkeypatch.setattr(providers_lifespan, "st", st.model_copy(update={"MOSS_URL": url}))
+    driver = providers_lifespan.moss_driver(cast("HTTPPort", object()))
+    assert isinstance(driver, MossDriver)
+
+
+def test_providers_the_stage_reader_is_always_open(client: TestClient) -> None:
+    assert client.app.state.system.providers.named["stage"].spec.name == "teams-stage"
 
 
 def test_providers_ocr_is_off_by_default(client: TestClient) -> None:

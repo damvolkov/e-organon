@@ -10,6 +10,8 @@ RUN uv sync --frozen --no-dev --no-editable
 ##### DEPLOY #####
 FROM python:3.14-slim-trixie AS deploy
 WORKDIR /app
+### ffmpeg and ffprobe: the media adapter decodes with them — `audio/transcribe` streams through this binary.
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 ### ORGANON_DATA: one volume, a subtree per section; the store beside them.
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 ORGANON_DATA=/data DB_PATH=/data/store/app.db
 COPY --from=builder /app/.venv .venv

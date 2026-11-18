@@ -18,7 +18,7 @@ e-organon/
 │   │   │       ├── doc.py             ● convert inspect fill merge split render   ○ stamp signature sign
 │   │   │       │                                                 compress protect redact render compose ocr extract diff
 │   │   │       ├── image.py           ○ convert cutout upscale detect depth redact ocr barcode meta hash diff trace render scan optimize signature
-│   │   │       ├── audio.py           ○ convert clean normalize diarize separate fingerprint transcribe speak
+│   │   │       ├── audio.py           ● transcribe   ○ convert clean normalize diarize separate fingerprint speak
 │   │   │       ├── video.py           ○ convert cut frames scenes subtitle gif fetch
 │   │   │       ├── text.py            ○ detect translate grammar redact keywords count diff readability
 │   │   │       ├── data.py            ○ query convert schema chart select
@@ -27,16 +27,16 @@ e-organon/
 │   │   │       └── tekton.py          ○ eng · work · session · live · catalog (the #tekton bridge)
 │   │   ├── mcp/
 │   │   │   ├── registry.py · mount.py · instructions.py · refusals.py   ●
-│   │   │   └── tools/                 ● health user doc   ○ one twin module per router above
+│   │   │   └── tools/                 ● health user doc image audio   ○ one twin module per router above
 │   │   ├── services/                  the tools: one ToolFlow per word
 │   │   │   ├── flow.py                ● ToolFlow — events, run, failures as the last event
 │   │   │   ├── files.py               ● AllowedFiles — paths resolved and kept under the roots
 │   │   │   ├── doc/                   ● convert inspect fill merge split render   ○ stamp signature sign redact compose…
 │   │   │   ├── image/                 ○ cutout.py (signature's step) convert.py upscale.py …
-│   │   │   ├── audio/ video/ text/ data/ web/   ○
+│   │   │   ├── audio/                 ● transcribe   video/ text/ data/ web/   ○
 │   │   │   ├── organon/               ○ find.py job.py artifact.py
 │   │   │   └── tekton/                ○ eng.py work.py session.py live.py catalog.py (ported from e_metaxy)
-│   │   ├── models/                    ● flow.py error.py doc.py   ○ image.py audio.py … artifact.py job.py tekton.py
+│   │   ├── models/                    ● flow.py error.py doc.py audio.py   ○ image.py … artifact.py job.py tekton.py
 │   │   │
 │   │   │   ── e-arkhetypo's common, materialized whole INSIDE the package (c) ──
 │   │   ├── engines/                   ● (c) auth cache dispatch health telemetry  ● artifact.py (the outbox)
@@ -44,15 +44,15 @@ e-organon/
 │   │   ├── processors/                ● (c) doc.py (DocProcessor)
 │   │   │                              ○ pdf.py · image.py · signature.py · scan.py · media.py · table.py · text.py
 │   │   ├── ports/                     ● (c) 18: documents markdown pages ner embed rerank queue store llm …
-│   │   │                              ● pdf render   ○ raster matting detect ocr speech office grammar translate pii media table…
+│   │   │                              ● pdf render speech media   ○ raster matting detect ocr office grammar translate pii table…
 │   │   ├── providers/
 │   │   │   ├── drivers/               ● (c) documents/docling ner/gliner embed/tei rerank/tei queue/{pgqueuer,awa}
-│   │   │   │                                database/psqlpy store/{redis,sqlite} http/wreq auth/postgres llm …
+│   │   │   │                                database/psqlpy store/{redis,sqlite} http/wreq auth/postgres llm speech/moss …
 │   │   │   │                          ○ speech/evoice office/gotenberg grammar/languagetool browser/playwright
 │   │   │   │                            search/searxng meta/exiftool coder/claude pii/presidio
 │   │   │   └── adapters/              ● (c) markdown/anytomd pages/liteparse extract language/lingua cache watch telemetry
-│   │   │                              ● pdf/pikepdf render/pdfium   ○ pdf/pyhanko raster/vips vision/opencv inference/onnx
-│   │   │                                table/duckdb media/ffmpeg render/{typst,pandoc,resvg} code/{zxing,vtracer}
+│   │   │                              ● pdf/pikepdf render/pdfium media/ffmpeg   ○ pdf/pyhanko raster/vips vision/opencv inference/onnx
+│   │   │                                table/duckdb render/{typst,pandoc,resvg} code/{zxing,vtracer}
 │   │   ├── infra/                     ● (c) auth config mcp errors logger settings state …
 │   │   │   └── config/services.py     ● ServiceSettings — organon's own cluster: ORGANON_ROOTS   ○ artifacts, gpu
 │   │   └── ops/                       ● (c) compose crypto file hash image registry wrappers
