@@ -36,6 +36,14 @@ class PageNotFoundError(OrganonError, LookupError):
     """The PDF has no page of that number (from 0)."""
 
 
+class AudioTooLongError(OrganonError):
+    """The recording is longer than the audio limit: its length is read from the header, refused before a frame is decoded."""
+
+
+class NoAudioError(OrganonError):
+    """The container carries no sound: there is nothing to transcribe."""
+
+
 class UnknownJobError(OrganonError, LookupError):
     """No job under that id: never submitted, or long settled and gone."""
 

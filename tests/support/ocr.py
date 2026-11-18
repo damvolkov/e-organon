@@ -3,21 +3,25 @@
 from typing import TYPE_CHECKING, ClassVar, Self
 
 from e_organon.infra.errors import ParseError
+from e_organon.ports.ocr import OcrWord
 from e_organon.ports.provider import Isolation, Locality, ProviderSpec, Workload
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from pathlib import Path
-
-    from e_organon.ports.ocr import OcrWord
 
 
 class FakeOcr:
-    """The same words for every image; `size` is the PNG header's, `read` refuses what is no PNG."""
+    """The same words for every image, unless `readings` names the image's bytes; `size` is the PNG header's, `read`
+    refuses what is no PNG."""
 
     spec: ClassVar[ProviderSpec] = ProviderSpec("fake-ocr", Locality.EMBEDDED, Workload.CPU_BOUND, Isolation.SERIAL)
 
-    def __init__(self, words: tuple[OcrWord, ...] = ()) -> None:
+    def __init__(
+        self, words: tuple[OcrWord, ...] = (), readings: Mapping[bytes, tuple[OcrWord, ...]] | None = None
+    ) -> None:
         self.words = words
+        self.readings = readings or {}
         self.seen: list[tuple[int, int, str]] = []
         self.models: Path | None = None
 
@@ -45,4 +49,9 @@ class FakeOcr:
     async def read(self, data: bytes, language: str) -> tuple[OcrWord, ...]:
         width, height = await self.size(data)
         self.seen.append((width, height, language))
-        return self.words
+        return self.readings.get(data, self.words)
+
+
+def said(*texts: str) -> tuple[OcrWord, ...]:
+    """What a strip reads: one word per text."""
+    return tuple(OcrWord(text=text, box=(0, 0, 8, 8)) for text in texts)

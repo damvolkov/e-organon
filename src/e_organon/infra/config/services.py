@@ -3,9 +3,11 @@
 UPPERCASE typed fields, the field name the environment variable itself, read once at the composition root and handed
 down as plain arguments."""
 
+from datetime import timedelta
 from pathlib import Path
+from typing import Annotated
 
-from pydantic import PositiveInt
+from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt
 
 from e_organon.infra.config.base import BaseSettings
 
@@ -34,6 +36,34 @@ class ServiceSettings(BaseSettings):
     ### times in a few hundred kilobytes, and render, merge and split walk it page by page.
     ORGANON_MAX_PAGES: PositiveInt = 5_000
 
+    ### MAX_AUDIO — the longest recording `audio/transcribe` accepts, read from the header before anything is decoded:
+    ### the engine answers a single pass of this much; longer lives are someone else's problem (cut it, then ask).
+    ORGANON_MAX_AUDIO: timedelta = timedelta(minutes=90)
+
+    ##### AUDIO #####
+
+    ### WINDOW — a recording longer than this is heard in windows of it, one request each. The sidecar holds 65 536
+    ### tokens for audio and transcript together: an hour of audio is ~44 800 of them (12.2 a second), so one pass of
+    ### a talkative hour ran out of room at 37 of 61 minutes and answered success (measured 2026-11-18). Thirty minutes
+    ### leave the transcript ~43 000: room to spare, and windows long enough to see each speaker's face at least once.
+    ORGANON_AUDIO_WINDOW: timedelta = timedelta(minutes=30)
+    ### OVERLAP — how much two neighbouring windows both hear: where their speakers are linked and their texts cut.
+    ORGANON_AUDIO_OVERLAP: timedelta = timedelta(minutes=2)
+    ### RETRIES — how many times a window that stopped hearing before its end is asked again for what it dropped.
+    ORGANON_AUDIO_RETRIES: NonNegativeInt = 2
+    ### STAGE — how often a video is looked at for who is speaking, and the size it is looked at.
+    ORGANON_STAGE_EVERY: timedelta = timedelta(seconds=2)
+    ORGANON_STAGE_WIDTH: PositiveInt = 1280
+    ORGANON_STAGE_HEIGHT: PositiveInt = 720
+    ### a name strip already read, looked at again: the mean grey difference under which it is the same strip.
+    ORGANON_STAGE_ALIKE: PositiveFloat = 10.0
+    ### a label is named when its name was seen this many times at least, and in this share of its sightings.
+    ORGANON_STAGE_VOTES: PositiveInt = 3
+    ORGANON_STAGE_SHARE: Annotated[float, Field(gt=0.5, le=1.0)] = 0.6
+    ### a segment its label could not name is named on its own when one name, and only it, was seen this many times
+    ### while it lasted (a label the engine gave two voices).
+    ORGANON_STAGE_ALONE: PositiveInt = 2
+
     ##### IMAGES #####
 
     ### MAX_PIXELS — the most pixels an image tool decodes (width x height, read from the header first): decoding
@@ -45,6 +75,8 @@ class ServiceSettings(BaseSettings):
     ### SLOTS — how many jobs of a section run at once, fleet-wide on the durable queue; one per section that has jobs.
     ORGANON_SLOTS_DOC: PositiveInt = 2
     ORGANON_SLOTS_IMAGE: PositiveInt = 2
+    ### one at a time: the speech sidecar is one model on one GPU, and an hour of audio is not a small thing to feed it.
+    ORGANON_SLOTS_AUDIO: PositiveInt = 1
 
     ##### TEKTON #####
 
