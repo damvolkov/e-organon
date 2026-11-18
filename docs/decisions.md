@@ -3,6 +3,26 @@
 Recorded here: what was hard to reverse, surprising without context, and the result of a real trade-off. Date, evidence,
 rejected alternatives. Everything else lives in the code and the changelog.
 
+## 2026-11-18 — `audio/transcribe`: windows, and speakers named from the video's grid
+
+**Context.** One pass of `allianz-importante.mp4` (61:24) returned segments to 37:13, three runs out of three, and the
+tool answered success. Measured on 18/11: the audio took 44 777 tokens of the sidecar's 65 536, and the decode stopped
+at 65 230 — the context, not chance. Damien also asked for a deterministic way to give each person in a video a label.
+
+**Decision.** Windows of 30 minutes overlapping by 2, a short answer re-asked for the rest; each window's labels named by
+the Teams speaking ring and the OCR'd name under it, by vote; windows stitched by name first, then by overlap, never
+across two names.
+
+**Evidence.** On 20-minute windows both meetings were covered to their last words; with linking by overlap alone, two
+people (the motor demo and the home demo) fused into one 945-second label no vote could name (69.6 % of speech named).
+Named per window and stitched by name: one label per person, 97.2 % named (`.ergon/scratch/speakers/`). The ring found
+in a 61-minute video in two minutes on CPU, OCR once per distinct strip (171 reads).
+
+**Rejected.** *Raising the sidecar's context* (memory is the card's; the window also bounds the encoder's peak).
+*Voice embeddings to link windows* (a second model and its weights for what the overlap and the names already say).
+*The presenter's label under a shared screen* (constant over a 15-minute share while several people spoke: it names
+the sharer, not the speaker). *A model to name speakers from what they say* (not deterministic).
+
 ## 2026-11-17 — `audio/transcribe`: MOSS-Transcribe-Diarize 0.9B as the speech engine
 
 **Context.** Long-form, multi-speaker transcription, local on one RTX 4090, Spanish first-hand use. The queued corpus:

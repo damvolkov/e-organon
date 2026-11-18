@@ -25,7 +25,8 @@ TOOL_DEPS: Final[dict[str, Provide]] = {DepKey.GRAPH.value: Provide(graph, sync_
 async def transcribe(
     data: JSONBody[TranscribeIn], request: Request[Any, Any, Any], graph: NamedDependency[State]
 ) -> Any:
-    """audio/transcribe: a recording, whole, into a timestamped speaker-aware transcript."""
+    """audio/transcribe: a recording, whole, into a timestamped speaker-aware transcript, its speakers named from a
+    meeting video's grid."""
     return await answer(request, graph.services.audio.transcribe, data)
 
 

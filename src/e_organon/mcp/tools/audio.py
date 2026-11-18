@@ -16,9 +16,12 @@ TRANSCRIBE: Final = MCPTool(
     title="Transcribe a recording",
     description=(
         "An audio or video file by `path`, whole, into a timestamped speaker-aware transcript: `language` (two-letter "
-        "hint, empty hears it), `hotwords` (spellings the engine would guess: names, terms) and `srt` for subtitles. "
-        "The segments come back with the answer; the Markdown, JSON (and SRT) land in the outbox as `path`, `json_path`, "
-        "`srt_path`. Up to 90 min in one pass. Long jobs: ask with organon_submit and read with organon_job."
+        "hint, empty hears it), `hotwords` (spellings the engine would guess: names, terms), `srt` for subtitles and "
+        "`names` (default on) to name each speaker from a meeting video's grid — the speaking tile's name, read by "
+        "OCR. The segments come back with the answer, each with its label and its `name` when the video showed it; "
+        "`speakers` maps label to name, `windows` counts the requests, `covered` is where speech last ends. The "
+        "Markdown, JSON (and SRT) land in the outbox as `path`, `json_path`, `srt_path`. Up to 90 min, heard in "
+        "overlapping windows. Long jobs: ask with organon_submit and read with organon_job."
     ),
     read_only=False,
 )

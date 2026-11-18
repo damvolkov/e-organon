@@ -13,14 +13,20 @@ from typing import Final
 from litestar import Litestar
 
 from e_organon.api.state import AppState
+from e_organon.engines.artifact import ArtifactEngine
 from e_organon.infra.logger import logger
 from e_organon.infra.settings import settings as st
 from e_organon.ops.crypto import Crypto, CryptoKeys
 from e_organon.ops.projects import NamedProjects
 from e_organon.ports.documents import DocumentPort
 from e_organon.ports.markdown import MarkdownPort
+from e_organon.ports.media import MediaPort
+from e_organon.ports.ocr import OcrPort
 from e_organon.ports.pages import PagesPort
+from e_organon.ports.stage import StagePort
+from e_organon.ports.transcribe import TranscribePort
 from e_organon.processors.doc import DocProcessor
+from e_organon.processors.speakers import SpeakersProcessor
 from e_organon.services.audio.transcribe import TranscribeAudioService
 from e_organon.services.doc.compose import ComposeDocService
 from e_organon.services.doc.convert import ConvertDocService
@@ -68,6 +74,44 @@ def reader(markdown: MarkdownPort, pages: PagesPort, docling: DocumentPort | Non
     )
 
 
+def transcriber(
+    moss: TranscribePort,
+    media: MediaPort,
+    files: AllowedFiles,
+    artifacts: ArtifactEngine,
+    *,
+    stage: StagePort,
+    ocr: OcrPort | None,
+) -> TranscribeAudioService:
+    """audio/transcribe over its sidecar, AUDIO_* and STAGE_*: speakers are named from the video only with an OCR to
+    read the names (OCR_ENABLED); labels otherwise."""
+    speakers = (
+        None
+        if ocr is None
+        else SpeakersProcessor(
+            stage,
+            ocr,
+            width=st.ORGANON_STAGE_WIDTH,
+            height=st.ORGANON_STAGE_HEIGHT,
+            alike=st.ORGANON_STAGE_ALIKE,
+            votes=st.ORGANON_STAGE_VOTES,
+            share=st.ORGANON_STAGE_SHARE,
+        )
+    )
+    return TranscribeAudioService(
+        moss,
+        media,
+        files,
+        artifacts,
+        limit=st.ORGANON_MAX_AUDIO,
+        window=st.ORGANON_AUDIO_WINDOW,
+        overlap=st.ORGANON_AUDIO_OVERLAP,
+        retries=st.ORGANON_AUDIO_RETRIES,
+        speakers=speakers,
+        frames=(st.ORGANON_STAGE_EVERY, st.ORGANON_STAGE_WIDTH, st.ORGANON_STAGE_HEIGHT),
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: Litestar) -> AsyncGenerator[None]:
     """Assemble what travels with the app: crypto, then each section's tools over the open providers."""
@@ -108,8 +152,8 @@ async def lifespan(app: Litestar) -> AsyncGenerator[None]:
         case None:
             pass
         case moss:
-            system.services.audio.transcribe = TranscribeAudioService(
-                moss, found.media, files, artifacts, limit=st.ORGANON_MAX_AUDIO
+            system.services.audio.transcribe = transcriber(
+                moss, found.media, files, artifacts, stage=found.stage, ocr=found.ocr
             )
     ### `doc/ocr` exists only with its engine open (OCR_ENABLED).
     match found.ocr:

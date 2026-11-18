@@ -32,6 +32,7 @@ from e_organon.ports.pdf import PdfPort
 from e_organon.ports.provider import Provider
 from e_organon.ports.render import RenderPort
 from e_organon.ports.sign import SignPort
+from e_organon.ports.stage import StagePort
 from e_organon.ports.store import StorePort
 from e_organon.ports.transcribe import TranscribePort
 from e_organon.providers.adapters.compose.typst import TypstAdapter
@@ -43,6 +44,7 @@ from e_organon.providers.adapters.pages.liteparse import LiteparseAdapter
 from e_organon.providers.adapters.pdf.pikepdf import PikepdfAdapter
 from e_organon.providers.adapters.render.pdfium import PdfiumAdapter
 from e_organon.providers.adapters.sign.pyhanko import PyhankoAdapter
+from e_organon.providers.adapters.stage.teams import TeamsStageAdapter
 from e_organon.providers.drivers.auth.postgres import PostgresAuthDriver
 from e_organon.providers.drivers.coder.claude import ClaudeDriver
 from e_organon.providers.drivers.database.asyncpg import AsyncpgDriver
@@ -83,6 +85,8 @@ class ProvidersState:
     cutout: CutoutPort
     compose: ComposePort
     media: MediaPort
+    ### who speaks in a meeting's video: pure pixels, nothing to fetch, always open; it names speakers only with an OCR.
+    stage: StagePort
     ### the coder opens only with the bridge on (TEKTON_PROFILES): the public image carries no Claude CLI.
     coder: CoderPort | None
     ### docling-serve is optional: present only when DOCLING_URL is set — the doc tools read without it.
@@ -200,6 +204,7 @@ async def lifespan(app: Litestar) -> AsyncGenerator[None]:
         cutout = await enter(OpencvAdapter())
         compose = await enter(TypstAdapter(timeout=st.COMPOSE_TIMEOUT.total_seconds()))
         media = await enter(ffmpeg())
+        stage = await enter(TeamsStageAdapter())
         coder = await enter(ClaudeDriver(st.TEKTON_CLAUDE)) if st.TEKTON_PROFILES else None
         docling = await enter(docling_driver(http)) if st.DOCLING_URL else None
         moss = await enter(moss_driver(http)) if st.MOSS_URL else None
@@ -218,6 +223,7 @@ async def lifespan(app: Litestar) -> AsyncGenerator[None]:
             cutout=cutout,
             compose=compose,
             media=media,
+            stage=stage,
             coder=coder,
             docling=docling,
             moss=moss,

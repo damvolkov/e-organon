@@ -4,21 +4,24 @@ consuming the audio it is handed so the streaming contract (the wav really arriv
 from typing import TYPE_CHECKING, ClassVar, Self
 
 from e_organon.ports.provider import Isolation, Locality, ProviderSpec, Workload
-from e_organon.ports.transcribe import Transcript
+from e_organon.ports.transcribe import Segment, Transcript
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Callable
 
-    from e_organon.ports.transcribe import Segment
+    from e_organon.services.audio.transcribe import TranscribeAudioService
+
+type Build = Callable[..., TranscribeAudioService]
 
 
 class FakeTranscribe:
-    """The same transcript every time; `seen` records each call as (name, language, hotwords, audio bytes read)."""
+    """The transcripts it was given, one per call in order and the last again once they run out; `seen` records each
+    call as (name, language, hotwords, audio bytes read)."""
 
     spec: ClassVar[ProviderSpec] = ProviderSpec("fake-transcribe", Locality.SIDECAR, Workload.GPU_BOUND, Isolation.LOOP)
 
-    def __init__(self, transcript: Transcript) -> None:
-        self.transcript = transcript
+    def __init__(self, transcript: Transcript, *later: Transcript) -> None:
+        self.answers = (transcript, *later)
         self.seen: list[tuple[str, str, tuple[str, ...], bytes]] = []
 
     async def __aenter__(self) -> Self:
@@ -35,7 +38,7 @@ class FakeTranscribe:
     ) -> Transcript:
         heard = b"".join([chunk async for chunk in audio])
         self.seen.append((name, language, hotwords, heard))
-        return self.transcript
+        return self.answers[min(len(self.seen), len(self.answers)) - 1]
 
 
 def transcript(
@@ -45,3 +48,8 @@ def transcript(
     return Transcript(
         text=text or "\n".join(each.text for each in segments), segments=segments, language=language, seconds=seconds
     )
+
+
+def seg(start: float, end: float, speaker: str, text: str = "x") -> Segment:
+    """One utterance, the words rarely mattering."""
+    return Segment(start=start, end=end, speaker=speaker, text=text)

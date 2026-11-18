@@ -13,12 +13,13 @@ if TYPE_CHECKING:
 ##### VALUES #####
 class Segment(msgspec.Struct, frozen=True, kw_only=True):
     """One utterance: its span in seconds, its anonymous speaker label — empty when the engine does not tell voices
-    apart — and its text."""
+    apart —, its text, and the speaker's name when something other than the voice told it (empty otherwise)."""
 
     start: float
     end: float
     speaker: str
     text: str
+    name: str = ""
 
 
 class Transcript(msgspec.Struct, frozen=True, kw_only=True):

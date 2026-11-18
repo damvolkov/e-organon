@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from litestar.testing import TestClient
-from pydantic import SecretStr
+from pydantic import HttpUrl, SecretStr
 
 from e_organon import main as main_module
 from e_organon.api import middlewares as middlewares_module
@@ -24,13 +24,17 @@ from e_organon.infra.settings import settings as st
 from e_organon.main import create_app
 from e_organon.ops.projects import NamedProjects
 from e_organon.ports.coder import Profile
+from e_organon.ports.media import MediaInfo
 from e_organon.ports.ocr import OcrWord
+from e_organon.ports.transcribe import Segment
 from e_organon.providers.drivers.store.sqlite import SqliteDriver
 from support import pki as pki_module
 from support.ink import ink_png
+from support.media import FakeMedia
 from support.ocr import FakeOcr
 from support.pdf import labelled
 from support.photo import photo
+from support.transcribe import FakeTranscribe, transcript
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterator, Mapping
@@ -107,6 +111,21 @@ def ocr_on(monkeypatch: pytest.MonkeyPatch, fake_ocr: FakeOcr, tmp_path: Path) -
     monkeypatch.setattr(mcp_lifespan_module, "st", on)
     monkeypatch.setattr(providers_module, "RapidocrAdapter", lambda *, models: fake_ocr.keeping(models))
     return tmp_path / "data" / "doc" / "models" / "rapidocr"
+
+
+@pytest.fixture
+def moss_on(monkeypatch: pytest.MonkeyPatch) -> FakeTranscribe:
+    """The app with MOSS_URL set: `audio/transcribe` is a route and a tool, its sidecar the returned fake and its media
+    reader a fake of a ten-second recording with sound. Request it before `client`."""
+    on = st.model_copy(update={"MOSS_URL": HttpUrl("http://moss.test:8000/v1")})
+    engine = FakeTranscribe(transcript((Segment(start=1.0, end=2.5, speaker="S01", text="Hola"),)))
+    media = FakeMedia(MediaInfo(duration=10.0, has_audio=True))
+    monkeypatch.setattr(main_module, "st", on)
+    monkeypatch.setattr(providers_module, "st", on)
+    monkeypatch.setattr(mcp_lifespan_module, "st", on)
+    monkeypatch.setattr(providers_module, "moss_driver", lambda http: engine)
+    monkeypatch.setattr(providers_module, "ffmpeg", lambda: media)
+    return engine
 
 
 @pytest.fixture(scope="session")

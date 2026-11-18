@@ -1,8 +1,10 @@
 """providers/adapters/media/ffmpeg: av containers read and decoded by ffmpeg — the house's one media tool.
 
 The binary runs as our child: a probe answers from `ffprobe`'s json, an extraction streams — ffmpeg writes the wav to
-its stdout and the bytes leave here as they arrive, so an hour of audio never sits whole in memory. A reader that stops
-early leaves the `async with`, and the child leaves with it: anyio's process kills and reaps what is still running.
+its stdout and the bytes leave here as they arrive, so an hour of audio never sits whole in memory; a window of it is
+ffmpeg's own input seek (`-ss`, `-t`). Frames stream the same way, one raw picture at a time, never the video whole. A reader that stops
+early leaves the `async with`, and the child is reaped with it; a child gone quiet is killed first, since anyio's
+process waits for its exit rather than killing it.
 What ffmpeg refuses — a container ffprobe cannot tell, a decode that fails, a child gone quiet past `stall` while its
 stdout should be flowing — is a `MediaError` with the reason off the child's own stderr, the exit checked, never assumed."""
 
@@ -13,7 +15,7 @@ import anyio
 import msgspec
 
 from e_organon.infra.errors import MediaError
-from e_organon.ports.media import MediaInfo
+from e_organon.ports.media import Frame, MediaInfo
 from e_organon.ports.provider import Isolation, Locality, ProviderSpec, Workload
 
 if TYPE_CHECKING:
@@ -93,7 +95,7 @@ class FfmpegAdapter:
                 raise MediaError(msg)
 
     @staticmethod
-    async def _extract_receive(stream: ByteReceiveStream, *, stall: float) -> bytes:
+    async def _common_receive(stream: ByteReceiveStream, *, stall: float) -> bytes:
         """One chunk of the child's stdout; a child gone silent past `stall` is a stuck child, and the end of the
         stream answers as empty — the caller's loop reads it as the stop."""
         try:
@@ -106,7 +108,7 @@ class FfmpegAdapter:
             return b""
 
     @staticmethod
-    async def _extract_drain(stream: ByteReceiveStream) -> bytes:
+    async def _common_drain(stream: ByteReceiveStream) -> bytes:
         """What the child wrote to stderr, whole: short by the time it has exited."""
         parts: list[bytes] = []
         try:
@@ -114,6 +116,35 @@ class FfmpegAdapter:
                 parts.append(await stream.receive())
         except anyio.EndOfStream:
             return b"".join(parts)
+
+    async def _common_stream(self, order: list[str], source: Path) -> AsyncIterator[bytes]:
+        """ffmpeg run on `order`, its stdout streamed as it comes; a stall, a missing pipe or a failed exit is a
+        `MediaError` with the child's own reason."""
+        head = [self._ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin"]
+        async with await anyio.open_process(
+            [*head, *order], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ) as child:
+            match (child.stdout, child.stderr):
+                case (None, _):
+                    msg = "the media could not be decoded: ffmpeg came up with no stdout to read"
+                    raise MediaError(msg)
+                case (stream, errors):
+                    try:
+                        while chunk := await self._common_receive(stream, stall=self._stall.total_seconds()):
+                            yield chunk
+                    except MediaError:
+                        ### a stuck child is killed here: leaving the `async with` closes its pipes but waits for it.
+                        child.kill()
+                        raise
+                    code = await child.wait()
+                    tail = b"" if errors is None else await self._common_drain(errors)
+                    match code:
+                        case 0:
+                            return
+                        case _:
+                            reason = tail.decode(errors="replace").strip() or f"ffmpeg died ({code})"
+                            msg = f"the media could not be decoded: {source.name}: {reason}"
+                            raise MediaError(msg)
 
     ############################################################
 
@@ -151,18 +182,17 @@ class FfmpegAdapter:
                 msg = f"the media could not be read: {source.name} has no duration the header tells"
                 raise MediaError(msg)
             case duration, streams:
-                return MediaInfo(
-                    duration=float(duration), has_audio=any(each.codec_type == "audio" for each in streams)
-                )
+                kinds = {each.codec_type for each in streams}
+                return MediaInfo(duration=float(duration), has_audio="audio" in kinds, has_video="video" in kinds)
 
-    async def extract(self, source: Path, *, sample_rate: int = 16_000) -> AsyncIterator[bytes]:
-        """The container's audio as one mono pcm-s16 wav at `sample_rate`, streamed as ffmpeg decodes it; video dropped."""
+    async def extract(
+        self, source: Path, *, sample_rate: int = 16_000, start: float = 0.0, length: float | None = None
+    ) -> AsyncIterator[bytes]:
+        """The container's audio as one mono pcm-s16 wav at `sample_rate`, streamed as ffmpeg decodes it; video dropped.
+        A window when `start` or `length` asks one: the seek is the input's, the wav's header its own."""
+        window = [*(["-ss", f"{start:.3f}"] if start else []), *(["-t", f"{length:.3f}"] if length is not None else [])]
         order = [
-            self._ffmpeg,
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-nostdin",
+            *window,
             "-i",
             str(source),
             "-vn",
@@ -176,22 +206,29 @@ class FfmpegAdapter:
             "wav",
             "pipe:1",
         ]
-        async with await anyio.open_process(
-            order, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        ) as child:
-            match (child.stdout, child.stderr):
-                case (None, _):
-                    msg = "the media could not be decoded: ffmpeg came up with no stdout to read"
-                    raise MediaError(msg)
-                case (stream, errors):
-                    while chunk := await self._extract_receive(stream, stall=self._stall.total_seconds()):
-                        yield chunk
-                    code = await child.wait()
-                    tail = b"" if errors is None else await self._extract_drain(errors)
-                    match code:
-                        case 0:
-                            return
-                        case _:
-                            reason = tail.decode(errors="replace").strip() or f"ffmpeg died ({code})"
-                            msg = f"the media could not be decoded: {source.name}: {reason}"
-                            raise MediaError(msg)
+        async for chunk in self._common_stream(order, source):
+            yield chunk
+
+    async def frames(self, source: Path, *, every: float, width: int, height: int) -> AsyncIterator[Frame]:
+        """One picture every `every` seconds, scaled to `width` by `height`, as packed `bgr24`: the instant is the
+        picture's place in the sampling, the first at 0."""
+        size = width * height * 3
+        order = [
+            "-i",
+            str(source),
+            "-an",
+            "-vf",
+            f"fps=1/{every:g},scale={width}:{height}",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "bgr24",
+            "pipe:1",
+        ]
+        held, index = bytearray(), 0
+        async for chunk in self._common_stream(order, source):
+            held += chunk
+            while len(held) >= size:
+                yield Frame(at=index * every, pixels=bytes(held[:size]))
+                del held[:size]
+                index += 1

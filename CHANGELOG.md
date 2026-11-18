@@ -3,6 +3,24 @@
 ## [Unreleased]
 
 ### Added
+- **`audio/transcribe` whole on any length, its speakers named from the video (TODO_speakers)**. One pass of a
+  61-minute meeting stopped at 37:13 and answered success: the sidecar holds 65 536 tokens for audio and transcript
+  together, and the hour's audio took 44 777 of them (measured 18/11: the decode stopped at 65 230). Now a recording
+  longer than `ORGANON_AUDIO_WINDOW` (30 min) is heard in windows overlapping by `ORGANON_AUDIO_OVERLAP` (2 min), one
+  request each (`MediaPort.extract` takes `start`/`length`); a window whose answer stops more than the overlap before
+  its end is asked again for the rest, up to `ORGANON_AUDIO_RETRIES` (2). Speakers are named deterministically, no model
+  asked: `StagePort.rings` (new; `TeamsStageAdapter`, OpenCV) finds the Teams tile ringed as speaking in pictures
+  sampled every `ORGANON_STAGE_EVERY` (2 s, `MediaPort.frames`), the OCR reads the name strip under it (once per place
+  while it looks alike), and `SpeakersProcessor` names each window's labels by vote (at least `ORGANON_STAGE_VOTES` 3
+  sightings and `ORGANON_STAGE_SHARE` 0.6 of them), then stitches the windows: by name first, then by the overlap they
+  both heard, never across two different names, the overlap cut at its middle. A shared screen shows no grid (its
+  foot-left label is the presenter's for the whole share, measured): a voice heard only there keeps its label. The
+  answer gains `windows`, `covered`, `speakers` (label → name) and each segment's `name`; Markdown and SRT lead with the
+  name; `TranscribeIn.names` turns it off. Without an OCR (`OCR_ENABLED` off) the labels stay. Also: a stalled ffmpeg
+  child is killed, no longer waited for (anyio's process waits on exit). Evidence: on the two Allianz meetings (61:24,
+  61:54) the earlier code on 20-minute windows covered both to their last words (3660/3685 s, 3681/3714 s); the naming,
+  voted per window and stitched by name, named 97.2 % of the important meeting's speech with one label per person
+  (`.ergon/scratch/speakers/`). Tests: 883, coverage 100 %, every hook clean.
 - **`audio/transcribe` (TODO_transcribe)**: a whole audio or video — up to `ORGANON_MAX_AUDIO` (90 min, refused on the
   header probe, nothing decoded) — into a timestamped, speaker-labelled transcript: Markdown, JSON and optional SRT kept
   in the outbox, the segments riding in the answer. `TranscribePort` met by `MossDriver` (MOSS-Transcribe-Diarize 0.9B on
