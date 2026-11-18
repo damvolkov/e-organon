@@ -210,20 +210,24 @@ class TranscribeAudioService(ToolFlow[TranscribeIn, TranscribeOut]):
         )
         return windows, whole
 
-    async def _name(self, source: Path, info: MediaInfo, data: TranscribeIn, windows: list[Window]) -> list[Window]:
-        """Each window's speakers named from the video's pictures on its own, before any stitching — when there is a
-        video, a reader of its stage, and names asked."""
+    async def _name(
+        self, source: Path, info: MediaInfo, data: TranscribeIn, windows: list[Window]
+    ) -> tuple[Segment, ...]:
+        """The windows stitched, their speakers named from the video's pictures — each window on its own before the
+        stitching, then each segment its label left unnamed — when there is a video, a reader of its stage, and names
+        asked; stitched unnamed otherwise."""
         match (self._speakers, self._frames, info.has_video and data.names):
             case (SpeakersProcessor() as speakers, (every, width, height), True):
                 seen = await speakers.heard(
                     self._media.frames(source, every=every.total_seconds(), width=width, height=height)
                 )
-                return [
+                named = [
                     Window(start=each.start, end=each.end, segments=speakers.name(each.segments, seen))
                     for each in windows
                 ]
+                return speakers.each(SpeakersProcessor.stitch(named), seen)
             case _:
-                return windows
+                return SpeakersProcessor.stitch(windows)
 
     ############################################################
 
@@ -241,7 +245,7 @@ class TranscribeAudioService(ToolFlow[TranscribeIn, TranscribeOut]):
         yield Step(name=STEPS[2], index=2, total=len(STEPS))
         windows, heard = await self._hear(source, info, data)
         yield Step(name=STEPS[3], index=3, total=len(STEPS))
-        named = SpeakersProcessor.stitch(await self._name(source, info, data, windows))
+        named = await self._name(source, info, data, windows)
         transcript = msgspec.structs.replace(heard, segments=named)
         covered = max((each.end for each in named), default=0.0)
         yield Step(name=STEPS[4], index=4, total=len(STEPS))

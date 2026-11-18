@@ -96,6 +96,7 @@ def transcriber(
             alike=st.ORGANON_STAGE_ALIKE,
             votes=st.ORGANON_STAGE_VOTES,
             share=st.ORGANON_STAGE_SHARE,
+            alone=st.ORGANON_STAGE_ALONE,
         )
     )
     return TranscribeAudioService(

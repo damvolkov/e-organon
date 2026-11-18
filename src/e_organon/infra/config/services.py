@@ -60,6 +60,9 @@ class ServiceSettings(BaseSettings):
     ### a label is named when its name was seen this many times at least, and in this share of its sightings.
     ORGANON_STAGE_VOTES: PositiveInt = 3
     ORGANON_STAGE_SHARE: Annotated[float, Field(gt=0.5, le=1.0)] = 0.6
+    ### a segment its label could not name is named on its own when one name, and only it, was seen this many times
+    ### while it lasted (a label the engine gave two voices).
+    ORGANON_STAGE_ALONE: PositiveInt = 2
 
     ##### IMAGES #####
 

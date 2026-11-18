@@ -319,3 +319,25 @@ async def test_speakers_name_needs_votes_a_share_and_a_name_that_reads_as_one(
     speakers: SpeakersProcessor, seen: list[Seen], expected: str
 ) -> None:
     assert _named(speakers, [seg(0, 4, "S01")], seen) == [("S01", expected)]
+
+
+@pytest.mark.parametrize(
+    ("seen", "expected"),
+    [
+        (_sighted("Diego", 12, 14), "Diego"),
+        (_sighted("Diego", 12), ""),
+        ([*_sighted("Diego", 12, 14), *_sighted("Angel", 16)], ""),
+        ([], ""),
+    ],
+    ids=["one-name-twice", "seen-once", "two-names", "nothing-seen"],
+)
+async def test_speakers_each_names_an_unnamed_segment_by_the_one_name_shown_while_it_lasted(
+    speakers: SpeakersProcessor, seen: list[Seen], expected: str
+) -> None:
+    (out,) = speakers.each([seg(10, 18, "S07")], seen)
+    assert out.name == expected
+
+
+async def test_speakers_each_leaves_a_named_segment_as_it_is(speakers: SpeakersProcessor) -> None:
+    (out,) = speakers.each([_called(10, 18, "S07", "Ana")], _sighted("Diego", 12, 14, 16))
+    assert out.name == "Ana"

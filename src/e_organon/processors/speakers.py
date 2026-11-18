@@ -18,8 +18,11 @@ strip. A strip already read at the same place, looking alike (a mean grey differ
 again: video noise is no new name. Only a picture with exactly one marked tile says who spoke at that instant. What the
 OCR read is cut to the person (the organisation after them goes), its variants folded onto the most frequent spelling
 they resemble (`difflib`, ratio `FOLD`), and what reads as no name dropped. Each label then counts the names seen while
-it spoke: the most seen names it when seen at least `votes` times and in at least `share` of its sightings. A label
-spoken only under a shared screen — no grid, no tile — keeps no name: it is not guessed."""
+it spoke: the most seen names it when seen at least `votes` times and in at least `share` of its sightings. A label the
+engine gave two voices splits its votes and is named by none; its segments are then named one by one, after stitching,
+where the video showed one name at least `alone` times while the segment lasted and no other — a name earned by one
+segment never spreads to its label. A label spoken only under a shared screen — no grid, no tile — keeps no name: it
+is not guessed."""
 
 import bisect
 import re
@@ -85,7 +88,7 @@ class Seen:
 class SpeakersProcessor:
     """Windows stitched under one set of labels; labels named by what the video showed."""
 
-    __slots__ = ("_alike", "_height", "_language", "_ocr", "_share", "_stage", "_votes", "_width")
+    __slots__ = ("_alike", "_alone", "_height", "_language", "_ocr", "_share", "_stage", "_votes", "_width")
 
     def __init__(
         self,
@@ -97,10 +100,11 @@ class SpeakersProcessor:
         alike: float,
         votes: int,
         share: float,
+        alone: int,
         language: str = "spa",
     ) -> None:
         self._stage, self._ocr, self._width, self._height = stage, ocr, width, height
-        self._alike, self._votes, self._share, self._language = alike, votes, share, language
+        self._alike, self._votes, self._share, self._alone, self._language = alike, votes, share, alone, language
 
     ##### PRIVATE #####
 
@@ -205,6 +209,21 @@ class SpeakersProcessor:
                 _ = said and held.append((ring.look, said))
                 return said
 
+    def _name_sightings(self, seen: Sequence[Seen]) -> tuple[list[float], list[str]]:
+        """The sightings with a name that reads as one, folded, in time order: their instants and their names."""
+        folded = self._name_fold(Counter(each.name for each in seen))
+        sightings = [(each.at, folded[each.name]) for each in seen if each.name in folded]
+        return [at for at, _ in sightings], [name for _, name in sightings]
+
+    def _each_own(self, segment: Segment, instants: Sequence[float], names: Sequence[str]) -> str:
+        """The one name the video showed, and only it, at least `alone` times while the segment lasted; else none."""
+        shown = Counter(names[bisect.bisect_left(instants, segment.start) : bisect.bisect_right(instants, segment.end)])
+        match shown.most_common(2):
+            case [(name, count)] if count >= self._alone:
+                return name
+            case _:
+                return ""
+
     ############################################################
 
     ##### PUBLIC #####
@@ -253,15 +272,12 @@ class SpeakersProcessor:
     def name(self, segments: Iterable[Segment], seen: Sequence[Seen]) -> tuple[Segment, ...]:
         """The segments with their speaker's name, where the video named that speaker clearly."""
         whole = tuple(segments)
-        folded = self._name_fold(Counter(each.name for each in seen))
-        sightings = [(each.at, folded[each.name]) for each in seen if each.name in folded]
-        instants = [at for at, _ in sightings]
+        instants, names = self._name_sightings(seen)
         votes: dict[str, Counter] = defaultdict(Counter)
         for each in whole:
-            for _, name in sightings[
-                bisect.bisect_left(instants, each.start) : bisect.bisect_right(instants, each.end)
-            ]:
-                votes[each.speaker][name] += 1
+            votes[each.speaker].update(
+                names[bisect.bisect_left(instants, each.start) : bisect.bisect_right(instants, each.end)]
+            )
         named = {
             label: top
             for label, counted in votes.items()
@@ -271,4 +287,13 @@ class SpeakersProcessor:
         }
         return tuple(
             msgspec.structs.replace(each, name=named[each.speaker]) if each.speaker in named else each for each in whole
+        )
+
+    def each(self, segments: Iterable[Segment], seen: Sequence[Seen]) -> tuple[Segment, ...]:
+        """Every segment still unnamed, named on its own where the video showed one name, and only it, at least `alone`
+        times while it lasted; named segments are left as they are."""
+        instants, names = self._name_sightings(seen)
+        return tuple(
+            each if each.name else msgspec.structs.replace(each, name=self._each_own(each, instants, names))
+            for each in segments
         )

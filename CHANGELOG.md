@@ -13,14 +13,17 @@
   sampled every `ORGANON_STAGE_EVERY` (2 s, `MediaPort.frames`), the OCR reads the name strip under it (once per place
   while it looks alike), and `SpeakersProcessor` names each window's labels by vote (at least `ORGANON_STAGE_VOTES` 3
   sightings and `ORGANON_STAGE_SHARE` 0.6 of them), then stitches the windows: by name first, then by the overlap they
-  both heard, never across two different names, the overlap cut at its middle. A shared screen shows no grid (its
+  both heard, never across two different names, the overlap cut at its middle; a segment its label left unnamed (the
+engine gave two voices one label) is named on its own when one name, and only it, was shown `ORGANON_STAGE_ALONE` (2)
+times while it lasted. A shared screen shows no grid (its
   foot-left label is the presenter's for the whole share, measured): a voice heard only there keeps its label. The
   answer gains `windows`, `covered`, `speakers` (label → name) and each segment's `name`; Markdown and SRT lead with the
   name; `TranscribeIn.names` turns it off. Without an OCR (`OCR_ENABLED` off) the labels stay. Also: a stalled ffmpeg
   child is killed, no longer waited for (anyio's process waits on exit). Evidence: on the two Allianz meetings (61:24,
-  61:54) the earlier code on 20-minute windows covered both to their last words (3660/3685 s, 3681/3714 s); the naming,
-  voted per window and stitched by name, named 97.2 % of the important meeting's speech with one label per person
-  (`.ergon/scratch/speakers/`). Tests: 883, coverage 100 %, every hook clean.
+  61:54), on 30-minute windows, both covered to their last words (3661/3685 s, 3681/3714 s) in three requests each;
+  98.9 % and 92.8 % of their speech named, one label per person, nothing between segments longer than 20 s. What stays
+  unnamed was spoken under a shared screen (minutes 20–29 of the second meeting show no tile at all) — the labels
+  stay (`.ergon/scratch/speakers/`). Tests: 883, coverage 100 %, every hook clean.
 - CI installs ffmpeg for the test job: the media adapter's tests decode real containers, and every run of `feat/audio`
   failed without it (`FileNotFoundError: 'ffmpeg'`).
 - **`audio/transcribe` (TODO_transcribe)**: a whole audio or video — up to `ORGANON_MAX_AUDIO` (90 min, refused on the

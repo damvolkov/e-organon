@@ -20,4 +20,4 @@ def ocr() -> FakeOcr:
 
 @pytest.fixture
 def speakers(stage: FakeStage, ocr: FakeOcr) -> SpeakersProcessor:
-    return SpeakersProcessor(stage, ocr, width=64, height=36, alike=10.0, votes=3, share=0.6)
+    return SpeakersProcessor(stage, ocr, width=64, height=36, alike=10.0, votes=3, share=0.6, alone=2)
