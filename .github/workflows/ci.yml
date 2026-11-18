@@ -63,6 +63,10 @@ jobs:
       - name: Sync env
         if: steps.changes.outputs.code == 'true'
         run: uv sync --python ${{ matrix.python }}
+      # the media adapter's tests write and decode real containers with the system's ffmpeg, as the image ships it.
+      - name: ffmpeg
+        if: steps.changes.outputs.code == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
       - name: Unit tests + coverage gate
         if: steps.changes.outputs.code == 'true'
         shell: bash

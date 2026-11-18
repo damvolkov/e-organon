@@ -89,6 +89,14 @@ class DocumentError(DriverError, AdapterError):
     """A document conversion that failed — the capability is met by a server and by a library in process."""
 
 
+class TranscribeError(DriverError):
+    """A speech server that answered outside its contract, or a call on one that was never configured."""
+
+
+class MediaError(AdapterError):
+    """A container ffprobe cannot tell or ffmpeg cannot decode: the refusal the tool itself voiced."""
+
+
 ##### ENGINES #####
 class EngineError(CoreError):
     """An engine refused a request before touching any resource."""
