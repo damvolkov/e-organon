@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d  # v10.4.0
       - name: Static gates
         run: |
           uv sync --group lint --no-install-project
@@ -58,7 +58,7 @@ jobs:
         run: |
           touched=$(git diff --name-only HEAD^1 HEAD | grep -vE '^docs/|\.md$|^zensical\.toml$' | head -1 || true)
           echo "code=$([ -n "$touched" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d  # v10.4.0
         if: steps.changes.outputs.code == 'true'
       - name: Sync env
         if: steps.changes.outputs.code == 'true'
@@ -91,7 +91,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d  # v10.4.0
       - name: Strict build (fails on broken links or missing assets)
         run: |
           uv sync --group docs --no-install-project
